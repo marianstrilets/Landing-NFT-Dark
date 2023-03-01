@@ -1,0 +1,12 @@
+extends layout/app
+
+block page 
+    include slices/header
+
+    h1.title Main header!!!
+
+    ul.news 
+        each item in news
+            li.news-item= item.name
+
+    include slices/footer
