@@ -1,49 +1,51 @@
-const { watch, series, parallel } = require("gulp");
+import gulp from "gulp";
+import {path} from "./gulp/config/path.js";
+import {plugins} from "./gulp/config/plugins.js";
 
-// ----------------------------------------- Plugins ------------------------------------
-//Keep multiple browsers & devices in sync when building websites.
-const browserSync = require("browser-sync").create();
-//=======================================================================================
+global.app = {
+	isBuild: process.argv.includes('--build'),
+	isDev: !process.argv.includes('--build'),
+	path: path,
+	gulp: gulp,
+	plugins: plugins
+}
 
-// ---------------------------------------- Tasks js ------------------------------------
-const clear = require("./task/clear.js");
-const html = require("./task/html.js");
-const pug = require("./task/pug.js");
-//=======================================================================================
+// Имрорт задач
+import {copy} from "./gulp/tasks/copy.js";
+import {reset} from "./gulp/tasks/reset.js";
+import {html} from "./gulp/tasks/html.js";
+import {server} from "./gulp/tasks/server.js";
+import {scss} from "./gulp/tasks/scss.js";
+import {js} from "./gulp/tasks/js.js";
+import {images} from "./gulp/tasks/images.js";
+import {otfToTtf, ttfToWoff, fontsStyle} from "./gulp/tasks/fonts.js";
+import {svgSprive} from "./gulp/tasks/svgSprive.js";
+import {zip} from "./gulp/tasks/zip.js";
+import {ftp} from "./gulp/tasks/ftp.js";
 
-// ---------------------------------------- Config --------------------------------------
-const path = require("./config/path.js");
-//=======================================================================================
 
-// ------------------------------------- Change Tracking --------------------------------
-const watcher = () => {
-    watch(path.html.watch, html).on("all", browserSync.stream);
-    watch(path.pug.watch, pug).on("all", browserSync.stream);
-};
-//=======================================================================================
+function watcher() {
+	gulp.watch(path.watch.files, copy);
+	gulp.watch(path.watch.html, html);
+	gulp.watch(path.watch.scss, scss);
+	gulp.watch(path.watch.js, js);
+	gulp.watch(path.watch.images, images);
+}
 
-// ---------------------------------------- Browser Sync --------------------------------
-const server = () => {
-    browserSync.init({ server: { baseDir: path.dest } });
-};
-//=======================================================================================
+export {svgSprive}
 
-// ------------------------------------------- Tasks ------------------------------------
-exports.html = html;
-exports.pug = pug;
-exports.watch = watcher;
-exports.clear = clear;
-//=======================================================================================
+const fonts = gulp.series(otfToTtf, ttfToWoff, fontsStyle);
 
-// ------------------------------ Choose preprocesor HTML ??? ---------------------------
-const preprocesor_html = exports.html;
-//const preprocesor_html = exports.pug;
-//=======================================================================================
+const mainTasks = gulp.series(fonts, gulp.parallel(copy, html, scss, js, images));
 
-// ----------------------------------------- Assembly  ----------------------------------
-exports.dev = series(
-    clear, 
-    //preprocesor_html,
-    //parallel(watcher, server)
-);
-//=======================================================================================
+const dev = gulp.series(reset, mainTasks, gulp.parallel(watcher, server));
+const build = gulp.series(reset, mainTasks, svgSprive);
+const deployZIP = gulp.series(reset, mainTasks, zip);
+const deployFTP = gulp.series(reset, mainTasks, ftp);
+
+export {dev}
+export {build}
+export {deployZIP}
+export {deployFTP}
+
+gulp.task('default', dev);
